@@ -17,4 +17,38 @@ function convertString(string $a, string $b): string
 
 
 
+/**
+ * @throws Exception
+ */
+
+function mySortForKey(array &$a, string $b): bool
+{
+    for ($i = 0; $i < count($a); $i++)
+    {
+        if (!array_key_exists($b,$a[$i]))
+        {
+            throw new Exception("Во вложенном массиве с индексом $i отсутсвует ключ $b.");
+        }
+    }
+
+    function sorter($key): Closure
+    {
+        return function ($a, $b) use ($key)
+        {
+            return $a[$key] <=> $b[$key];
+        };
+    }
+
+    return usort($a, sorter($b));
+}
+
+
 //echo convertString('string string string', 'str');
+
+//try
+//{
+//    mySortForKey($a, $b);
+//} catch (Exception $e)
+//{
+//    echo $e->getMessage();
+//}
