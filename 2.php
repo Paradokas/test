@@ -111,6 +111,81 @@ function importXml(string $a)
 
 
 
+/**
+ * @throws DOMException
+ * @throws Exception
+ */
+
+function exportXml(string $a, string $b)
+{
+    require 'connectDB.php';
+
+    $checkCategory = $connect->query("SELECT * FROM a_category WHERE name='$b'");
+    if ($checkCategory->num_rows <= 0) // Проверка наличия товаров в заданной категории
+    {
+        throw new Exception("Товары в категории '$b' отсутствуют");
+    }
+
+    $dom = new domDocument("1.0", "windows-1251");
+    $root = $dom->createElement("Товары"); // Создаём корневой элемент Товары
+    $dom->appendChild($root); // Добавляем корневой каталог "Товары" в файл
+
+    $queryIdCategory = $checkCategory->fetch_assoc();
+    $idCategory = $queryIdCategory['id'];
+
+    $allProducts = $connect->query("SELECT * FROM a_category_product WHERE id_category='$idCategory'"); // Запрос на выборку товаров
+    while($row = $allProducts->fetch_assoc())// Получаем все строки в цикле по одной
+    {
+        $idProduct = $row['id_product'];
+// Товар ---------------------------------------------------------------------------
+        $tagProduct = $dom->createElement("Товар"); // Создаём узел "Товар"
+        $infoProduct = $connect->query("SELECT * FROM a_product WHERE id='$idProduct'");
+        while ($row = $infoProduct->fetch_assoc())
+        {
+            $tagProduct->setAttribute("Код", $row['code']); // Устанавливаем атрибут "Код" у узла "Товары"
+            $tagProduct->setAttribute("Название", $row['name']); // Устанавливаем атрибут "Название" у узла
+        }
+// Цена ---------------------------------------------------------------------------
+        $infoPrice = $connect->query("SELECT * FROM a_price WHERE id_product='$idProduct'");
+        while ($row = $infoPrice->fetch_assoc())
+        {
+            $tagPrice = $dom->createElement("Цена", $row['price']); // Создаём узел "Цена" с текстом внутри
+            $tagPrice->setAttribute("Тип", $row['price_type']); // Устанавливаем атрибут "Тип" у узла "Цена"
+            $tagProduct->appendChild($tagPrice); // Добавляем в узел "Товар" узел "Цены"
+        }
+// Свойства ---------------------------------------------------------------------------
+        $tagProperty = $dom->createElement("Свойства"); // Создаём узел "Свойства"
+        $infoProperty = $connect->query("SELECT * FROM a_property WHERE id_product='$idProduct'");
+        while ($row = $infoProperty->fetch_assoc())
+        {
+            $nameProperty = $row['property'];
+            $tagInfoProperty = $dom->createElement("$nameProperty", $row['value']);
+            $tagProperty->appendChild($tagInfoProperty); // Добавляем в узел "Свойства" узлы с "Имя свойства"
+        }
+        $tagProduct->appendChild($tagProperty); // Добавляем в узел "Товар" узел "Свойства"
+// Разделы ---------------------------------------------------------------------------
+        $tagCategories = $dom->createElement("Разделы"); // Создаём узел "Разделы"
+        $queryIdCategories = $connect->query("SELECT * FROM a_category_product WHERE id_product='$idProduct'");
+        while ($row = $queryIdCategories->fetch_assoc())
+        {
+            $idProduct = $row['id_category'];
+            $queryNameCategory = $connect->query("SELECT * FROM a_category WHERE id='$idProduct'");
+            while ($row = $queryNameCategory->fetch_assoc())
+            {
+                $tagCategory = $dom->createElement("Раздел", $row['name']); // Создаём узел "Раздел"
+                $tagCategories->appendChild($tagCategory); // Добавляем в узел "Разделы" узел "Раздел"
+            }
+        }
+        $tagProduct->appendChild($tagCategories);// Добавляем в узел "Товар" узел "Разделы"
+
+        $root->appendChild($tagProduct); // Добавляем в корневой узел "Товары" узел "Товар"
+    }
+
+    $dom->save("$a"); // Сохраняем полученный XML-документ в файл
+}
+
+
+
 //echo convertString('string string string', 'str');
 
 //try
@@ -122,3 +197,10 @@ function importXml(string $a)
 //}
 
 //importXml('test.xml');
+
+//try
+//{
+//    exportXml('test.xml', 'принтеры');
+//} catch (DOMException|Exception $e) {
+//    echo $e->getMessage();
+//}
